@@ -20,6 +20,7 @@ public class DataHandler {
 	private String dataset;
 	private String relationName;
 	
+	private ArrayList<String> roadCluster;
 
 	private HashMap<String, ArrayList<String>> clusters;
 	private HashMap<String,String>pixel2cluster;
@@ -37,11 +38,24 @@ public class DataHandler {
 		pixel2cluster = new HashMap<String, String>();
 		attributes = new ArrayList<String>();
 		classValue = new ArrayList<String>();
+		roadCluster = new ArrayList<String>();
 
 		loadData();
 		System.out.println("Finished.\nInitializing GUI...");
 	}
 
+	public void addRoadCluster(String clusterId){
+		roadCluster.add(clusterId);
+	}
+	
+	public void removeRoadCluster(String clusterId){
+		roadCluster.remove(clusterId);
+	}
+	
+	public boolean isRoadCluster(String s){
+		return roadCluster.contains(s);
+	}
+	
 
 	private void loadData() {
 		try{
@@ -203,6 +217,14 @@ public class DataHandler {
 
 	public void setClassValue(ArrayList<String> classValue) {
 		this.classValue = classValue;
+	}
+
+	public ArrayList<String> getRoadCluster() {
+		return roadCluster;
+	}
+
+	public void setRoadCluster(ArrayList<String> roadCluster) {
+		this.roadCluster = roadCluster;
 	}
 
 }
