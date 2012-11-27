@@ -1,10 +1,16 @@
 package org.visualclassifier;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -14,17 +20,19 @@ public class DataHandler {
 	public static String TAG_ATTRIBUTE = "@attribute '";
 	public static String TAG_CLASS = "@attribute 'class' {";
 	public static String TAG_DATA = "@data";
-	
+	public static String TAG_VAL = "#_";
+
 	private String img_frame;
 	private String img_cluster;
 	private String dataset;
 	private String relationName;
-	
+	private File arff;
+	private File pix2clu;
 	private ArrayList<String> roadCluster;
 
 	private HashMap<String, ArrayList<String>> clusters;
 	private HashMap<String,String>pixel2cluster;
-	
+
 	private ArrayList<String> attributes;
 	private ArrayList<String> classValue;
 
@@ -47,20 +55,60 @@ public class DataHandler {
 	public void addRoadCluster(String clusterId){
 		roadCluster.add(clusterId);
 	}
-	
+
 	public void removeRoadCluster(String clusterId){
 		roadCluster.remove(clusterId);
 	}
-	
+
 	public boolean isRoadCluster(String s){
 		return roadCluster.contains(s);
 	}
-	
+
+	public void exportData() throws IOException{
+		/* ARFF */
+		System.out.println("Loading data from"+ arff.getAbsolutePath() +"...");
+		String out = arff.getAbsolutePath().replace(".arff", "") + "_classified.arff"; 
+
+		FileInputStream fstream = new FileInputStream(arff);
+		FileOutputStream fostream  = new FileOutputStream(new File(out));
+
+		DataOutputStream  dout = new DataOutputStream(fostream);
+		DataInputStream in = new DataInputStream(fstream);
+
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dout));
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+
+		String value;
+		boolean process = false;
+		int cluster = 0;
+		while ((value = br.readLine()) != null)   {
+			if(!process){
+				if(value.startsWith(TAG_DATA)){
+					process=true;
+					bw.append(value+"\n");
+					continue;
+				}
+				bw.append(value+"\n");
+			}
+			else{
+				if(isRoadCluster(""+cluster)){
+					value = value.replace(TAG_VAL, classValue.get(1));
+				}else{
+					value = value.replace(TAG_VAL, classValue.get(0));
+				}
+				
+				bw.append(value+"\n");
+				cluster++;
+			}
+		}
+		bw.flush();
+		dout.close();
+		in.close();
+	}
 
 	private void loadData() {
 		try{
-			File arff;
-			File pix2clu;
+
 			if(dataset.endsWith("arff")){
 				arff = new File(dataset);
 				pix2clu = new File(dataset.replace("arff", "pix2clu"));
@@ -69,9 +117,9 @@ public class DataHandler {
 				pix2clu = new File(dataset);
 				arff = new File(dataset.replace("pix2clu","arff"));
 			}
-			
+
 			/* PIX2CLU */
-			
+
 			System.out.println("Loading data from"+ pix2clu.getAbsolutePath() +"...");
 			FileInputStream fstream = new FileInputStream(pix2clu);
 			DataInputStream in = new DataInputStream(fstream);
@@ -80,7 +128,7 @@ public class DataHandler {
 			int count=0;
 			while ((value = br.readLine()) != null)   {
 				if(clusters.get(value)==null)clusters.put(value, new ArrayList<String>());
-				
+
 				clusters.get(value).add(count+"");
 				pixel2cluster.put(count+"", value);
 				count++;
@@ -88,8 +136,8 @@ public class DataHandler {
 			in.close();
 			//System.out.println(pixel2cluster.get("214560"));
 			//System.out.println(clusters.keySet().size());
-			
-			
+
+
 			/* ARFF */
 			System.out.println("Loading data from"+ arff.getAbsolutePath() +"...");
 			fstream = new FileInputStream(arff);
@@ -108,7 +156,7 @@ public class DataHandler {
 						//System.out.println(v);
 						s = i+1;
 						classValue.add(v);
-						
+
 					}
 					i = value.indexOf("}");
 					String v = value.substring(s,i).trim();
@@ -123,16 +171,16 @@ public class DataHandler {
 				}
 			}
 			in.close();
-			
+
 			System.out.println("\n# Relation: " +relationName);
 			System.out.println("\n# Attributes: ");
 			for(String s : attributes) System.out.println(s);
 
-			System.out.println("\n# Class: ");
-			for(String s : classValue) System.out.println(s);
-					
-			System.out.println("------------------------------\n");
-			
+					System.out.println("\n# Class: ");
+					for(String s : classValue) System.out.println(s);
+
+							System.out.println("------------------------------\n");
+
 		}catch (Exception e){
 			e.printStackTrace();
 		}

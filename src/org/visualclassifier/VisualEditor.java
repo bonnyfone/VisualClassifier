@@ -4,12 +4,16 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Vector;
 
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -34,6 +38,7 @@ public class VisualEditor extends JFrame {
 	private JScrollPane  scroll;
 	private JComboBox combo;
 	private JComboBox comboval;
+	private JButton export;
 	
 	public VisualEditor(DataHandler dh){
 		this.dh = dh;
@@ -42,28 +47,32 @@ public class VisualEditor extends JFrame {
 	}
 	
 	private void bindListeners() {
+		export.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				addLog("Exporting updated dataset...");
+				try {
+					dh.exportData();
+					addLog("Export complete.");
+				} catch (IOException e) {
+					addLog("ERROR exporting dataset, see console");
+					e.printStackTrace();
+				}
+			}
+		});
+		
 		img2.addMouseListener(new MouseListener() {
 			@Override
-			public void mouseReleased(MouseEvent arg0) {
-				// TODO Auto-generated method stub
-				
-			}
+			public void mouseReleased(MouseEvent arg0) {}
 			
 			@Override
-			public void mousePressed(MouseEvent arg0) {
-				// TODO Auto-generated method stub
-				
-			}
+			public void mousePressed(MouseEvent arg0) {}
 			
 			@Override
-			public void mouseExited(MouseEvent arg0) {
-				// TODO Auto-generated method stub
-				
-			}
+			public void mouseExited(MouseEvent arg0) {}
 			
 			@Override
-			public void mouseEntered(MouseEvent arg0) {
-			}
+			public void mouseEntered(MouseEvent arg0) {}
 			
 			@Override
 			public void mouseClicked(MouseEvent arg0) {
@@ -96,10 +105,7 @@ public class VisualEditor extends JFrame {
 			}
 			
 			@Override
-			public void mouseDragged(MouseEvent arg0) {
-				// TODO Auto-generated method stub
-				
-			}
+			public void mouseDragged(MouseEvent arg0) {}
 		});
 	}
 	
@@ -164,6 +170,10 @@ public class VisualEditor extends JFrame {
 		comboval = new JComboBox(vv);
 		c1.add(combo);
 		c1.add(comboval);
+
+		export = new JButton("Export dataset");
+		c2.add(export);
+		
 		controls.add(c1);
 		controls.add(c2);
 		
@@ -171,10 +181,6 @@ public class VisualEditor extends JFrame {
 		//add(scroll,BorderLayout.EAST);
 		add(center,BorderLayout.CENTER);
 		add(bottom,BorderLayout.SOUTH);
-		
-	}
-	
-	private void drawRoadClusters(){
 		
 	}
 
