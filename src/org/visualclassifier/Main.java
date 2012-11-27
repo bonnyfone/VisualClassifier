@@ -6,8 +6,8 @@ public class Main {
 		
 		//DEBUG
 		args = new String[3];
-		args[0] = "/media/Mistero/C++/Tesi/datasets/frame";
-		args[1] = "/media/Mistero/C++/Tesi/datasets/frameclus";
+		args[0] = "/media/Mistero/C++/Tesi/datasets/frame.bmp";
+		args[1] = "/media/Mistero/C++/Tesi/datasets/frameclus.bmp";
 		args[2] = "/media/Mistero/C++/Tesi/datasets/road1.arff";
 		
 		if(args.length<3){

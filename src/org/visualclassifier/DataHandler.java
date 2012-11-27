@@ -117,12 +117,92 @@ public class DataHandler {
 			System.out.println("\n# Class: ");
 			for(String s : classValue) System.out.println(s);
 					
-			System.out.println("------------------------------\n\n");
+			System.out.println("------------------------------\n");
 			
 		}catch (Exception e){
 			e.printStackTrace();
 		}
 
+	}
+
+
+	public String getImg_frame() {
+		return img_frame;
+	}
+
+
+	public void setImg_frame(String img_frame) {
+		this.img_frame = img_frame;
+	}
+
+
+	public String getImg_cluster() {
+		return img_cluster;
+	}
+
+
+	public void setImg_cluster(String img_cluster) {
+		this.img_cluster = img_cluster;
+	}
+
+
+	public String getDataset() {
+		return dataset;
+	}
+
+
+	public void setDataset(String dataset) {
+		this.dataset = dataset;
+	}
+
+
+	public String getRelationName() {
+		return relationName;
+	}
+
+
+	public void setRelationName(String relationName) {
+		this.relationName = relationName;
+	}
+
+
+	public HashMap<String, ArrayList<String>> getClusters() {
+		return clusters;
+	}
+
+
+	public void setClusters(HashMap<String, ArrayList<String>> clusters) {
+		this.clusters = clusters;
+	}
+
+
+	public HashMap<String, String> getPixel2cluster() {
+		return pixel2cluster;
+	}
+
+
+	public void setPixel2cluster(HashMap<String, String> pixel2cluster) {
+		this.pixel2cluster = pixel2cluster;
+	}
+
+
+	public ArrayList<String> getAttributes() {
+		return attributes;
+	}
+
+
+	public void setAttributes(ArrayList<String> attributes) {
+		this.attributes = attributes;
+	}
+
+
+	public ArrayList<String> getClassValue() {
+		return classValue;
+	}
+
+
+	public void setClassValue(ArrayList<String> classValue) {
+		this.classValue = classValue;
 	}
 
 }
