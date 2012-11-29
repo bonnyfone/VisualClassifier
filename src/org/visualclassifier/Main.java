@@ -8,15 +8,13 @@ public class Main {
 		
 		
 		//DEBUG
-		/*
 		args = new String[3];
-		args[0] = "/media/Mistero/C++/Tesi/datasets/frame.bmp";
-		args[1] = "/media/Mistero/C++/Tesi/datasets/frameclus.bmp";
-		args[2] = "/media/Mistero/C++/Tesi/datasets/road1.arff";
-		*/
+		args[0] = "/media/Mistero/C++/Tesi/datasets/TEST 1/frame.bmp";
+		args[1] = "/media/Mistero/C++/Tesi/datasets/TEST 1/frameclus.bmp";
+		args[2] = "/media/Mistero/C++/Tesi/datasets/TEST 1/road1.arff";
 		
 		if(args.length==0){
-			ClassifierGenerator cg = new ClassifierGenerator();
+			ClassifierGenerator cg = new ClassifierGenerator(true);
 			cg.setVisible(true);
 		}
 		else if(args.length<3){

@@ -6,7 +6,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -53,7 +52,8 @@ public class DataHandler {
 	}
 
 	public void addRoadCluster(String clusterId){
-		roadCluster.add(clusterId);
+		if(!roadCluster.contains(clusterId))
+			roadCluster.add(clusterId);
 	}
 
 	public void removeRoadCluster(String clusterId){
@@ -66,9 +66,11 @@ public class DataHandler {
 
 	public void exportData() throws IOException{
 		/* ARFF */
+		
 		System.out.println("Loading data from"+ arff.getAbsolutePath() +"...");
-		String out = arff.getAbsolutePath().replace(".arff", "") + "_classified.arff"; 
-
+		String out = arff.getAbsolutePath().replace(".arff", "") + "_classified.arff";
+		
+		
 		FileInputStream fstream = new FileInputStream(arff);
 		FileOutputStream fostream  = new FileOutputStream(new File(out));
 

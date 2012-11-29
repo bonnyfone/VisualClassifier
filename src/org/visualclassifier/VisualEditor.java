@@ -9,16 +9,23 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Vector;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.border.TitledBorder;
+
+import org.visualclassifier.generator.ClassifierGenerator;
 
 
 
@@ -36,9 +43,19 @@ public class VisualEditor extends JFrame {
 	private ImagePanel img2;
 	private JTextArea log;
 	private JScrollPane  scroll;
-	private JComboBox combo;
-	private JComboBox comboval;
+	
+	private JLabel l1;
+	private JLabel l2;
+	private JLabel l3;
+	private JCheckBox checkShowRoad;
+	
+	private String totCluster = "Total clusters: ";
+	private String markedCluster = "Marked clusters: ";
+	private String unmarkedCluster = "Unmarked clusters: ";
+	//private JComboBox combo;
+	//private JComboBox comboval;
 	private JButton export;
+	private JButton openGenerator;
 	
 	public VisualEditor(DataHandler dh){
 		this.dh = dh;
@@ -47,6 +64,16 @@ public class VisualEditor extends JFrame {
 	}
 	
 	private void bindListeners() {
+		
+		openGenerator.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				ClassifierGenerator cg = new ClassifierGenerator(false);
+				cg.setVisible(true);
+				setExtendedState(JFrame.ICONIFIED);
+			}
+		});
+		
 		export.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
@@ -54,6 +81,7 @@ public class VisualEditor extends JFrame {
 				try {
 					dh.exportData();
 					addLog("Export complete.");
+					JOptionPane.showMessageDialog(VisualEditor.this, "Export complete.");
 				} catch (IOException e) {
 					addLog("ERROR exporting dataset, see console");
 					e.printStackTrace();
@@ -61,7 +89,7 @@ public class VisualEditor extends JFrame {
 			}
 		});
 		
-		img2.addMouseListener(new MouseListener() {
+		MouseListener ml = new MouseListener() {
 			@Override
 			public void mouseReleased(MouseEvent arg0) {}
 			
@@ -85,15 +113,18 @@ public class VisualEditor extends JFrame {
 
 				if(arg0.getButton() == MouseEvent.BUTTON1){ //LEFT CLICK->SET ROAD
 					dh.addRoadCluster(cluster); //RIGTH CLICK->SET NOT ROAD
+					refreshStats();
 				}else{ //Mark as road
 					dh.removeRoadCluster(cluster);
+					refreshStats();
 				}
 				img1.setRoadColor(dh.isRoadCluster(cluster));
-				img1.repaint();
+				
+				if(checkShowRoad.isSelected())img1.repaint();
 			}
-		});
+		};
 		
-		img2.addMouseMotionListener(new MouseMotionListener() {
+		MouseMotionListener  mm = new MouseMotionListener() {
 			
 			@Override
 			public void mouseMoved(MouseEvent arg0) {
@@ -101,16 +132,29 @@ public class VisualEditor extends JFrame {
 				ArrayList<String> points = dh.getClusters().get(cluster);
 				img1.setSelectedClusterPoints(points);
 				img1.setRoadColor(dh.isRoadCluster(cluster));
-				img1.repaint();
+				if(checkShowRoad.isSelected())img1.repaint();
 			}
 			
 			@Override
 			public void mouseDragged(MouseEvent arg0) {}
-		});
+		};
+		
+		img2.addMouseListener(ml);
+		img1.addMouseListener(ml);
+		img2.addMouseMotionListener(mm);
+		img1.addMouseMotionListener(mm);
 	}
 	
 	public void addLog(String s){
 		log.insert(s+"\n", 0);
+		log.setCaretPosition(0);
+	}
+	
+	private void refreshStats(){
+		l1.setText(totCluster + dh.getClusters().keySet().size());
+		l2.setText(markedCluster + dh.getRoadCluster().size());
+		l3.setText(markedCluster + (dh.getClusters().keySet().size()-dh.getRoadCluster().size()));
+		
 	}
 	
 	private String calculateCluster(int x, int y){
@@ -119,11 +163,13 @@ public class VisualEditor extends JFrame {
 	}
 
 	private void init(){
-		setBackground(Color.gray);
-		setMinimumSize(new Dimension(500, minH));
-		setExtendedState(JFrame.MAXIMIZED_BOTH);
+		//setMinimumSize(new Dimension(500, minH));
+		//setExtendedState(JFrame.MAXIMIZED_BOTH);
+		setSize(1280,700);
+		setLocation(0, 0);
+		//setLocationRelativeTo(null);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
-		setTitle(dh.getRelationName());
+		setTitle("VisualClassifier: " +dh.getRelationName());
 		
 		BorderLayout bl = new BorderLayout();
 		setLayout(bl);
@@ -143,22 +189,45 @@ public class VisualEditor extends JFrame {
 		img1 = new ImagePanel(dh.getImg_frame(),dh);
 		img2 = new ImagePanel(dh.getImg_cluster(),dh);
 		img1.setShowRoadPoints(true);
-		center.add(img1);
-		center.add(img2);
+		JPanel pimg1 = new JPanel();
+		pimg1.setLayout(new GridLayout(1,1));
+		JPanel pimg2 = new JPanel();
+		pimg2.setLayout(new GridLayout(1,1));
+		pimg1.add(img1);
+		pimg2.add(img2);
+		pimg1.setBorder(BorderFactory.createTitledBorder(null, "Frame",TitledBorder.LEFT, TitledBorder.TOP, null, Color.darkGray));
+		pimg2.setBorder(BorderFactory.createTitledBorder(null, "Clusters",TitledBorder.LEFT, TitledBorder.TOP, null, Color.darkGray));
+		
+		center.add(pimg1);
+		center.add(pimg2);
 				
 		//Bottom
 		bottom = new JPanel();
 		bottom.setLayout(new GridLayout(1,2));
 		bottom.setPreferredSize(new Dimension(400,120));
 		log = new JTextArea("Initialized...");
-		bottom.add(log);
+		
+		JScrollPane js = new JScrollPane(log);
+		bottom.add(js);
+		js.setBorder(BorderFactory.createTitledBorder(null, "Logs",TitledBorder.LEFT, TitledBorder.TOP, null, Color.darkGray));
+		log.setBackground(getBackground());
 		controls = new JPanel();
-		controls.setBackground(Color.DARK_GRAY);
+		controls.setBorder(BorderFactory.createTitledBorder(null, "Controls",TitledBorder.LEFT, TitledBorder.TOP, null, Color.darkGray));
 		bottom.add(controls);
 		controls.setLayout(new GridLayout(1,2));
 		JPanel c1 = new JPanel();
 		JPanel c2 = new JPanel();
-		c1.setLayout(new GridLayout(3,1));
+		c1.setLayout(new GridLayout(4,1));
+		l1 = new JLabel(totCluster);
+		l2 = new JLabel(markedCluster);
+		l3 = new JLabel(unmarkedCluster);
+		checkShowRoad = new JCheckBox("Show marked clusters");
+		checkShowRoad.setSelected(true);
+		c1.add(l1);
+		c1.add(l2);
+		c1.add(l3);
+		c1.add(checkShowRoad);
+		/*
 		Vector<String> v = new Vector<String>();
 		for(int i=0;i<dh.getClusters().keySet().size();i++)
 			v.add(i+"");
@@ -170,10 +239,13 @@ public class VisualEditor extends JFrame {
 		comboval = new JComboBox(vv);
 		c1.add(combo);
 		c1.add(comboval);
+		*/
 
 		export = new JButton("Export dataset");
 		c2.add(export);
 		
+		openGenerator = new JButton("Merge dataset / Generate classifier");
+		c2.add(openGenerator);
 		controls.add(c1);
 		controls.add(c2);
 		
@@ -182,6 +254,19 @@ public class VisualEditor extends JFrame {
 		add(center,BorderLayout.CENTER);
 		add(bottom,BorderLayout.SOUTH);
 		
+		refreshStats();
+	}
+	
+	private void askSave(){
+		JFileChooser fs = new JFileChooser();
+		fs.setCurrentDirectory(new File("/media/Mistero/C++/Tesi/datasets"));
+		fs.setSelectedFile(new File("/media/Mistero/C++/Tesi/datasets/db.arff"));
+		fs.setDialogTitle("Save classified datasets to file");
+		int returnVal = fs.showSaveDialog(this);
+
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			
+		}
 	}
 
 	/*

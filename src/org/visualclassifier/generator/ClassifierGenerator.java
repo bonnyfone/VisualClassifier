@@ -46,8 +46,10 @@ public class ClassifierGenerator extends JFrame {
 	public static final String TAG_TREE_INIT = "------------------";
 	public static final String TAG_TREE_END  = "Number of Leaves";
 
-
-	public ClassifierGenerator(){
+	private boolean closeOnExit=true;
+	
+	public ClassifierGenerator(boolean closeOnExit){
+		this.closeOnExit = closeOnExit;
 		init();
 		bindListeners();
 	}
@@ -284,7 +286,7 @@ public class ClassifierGenerator extends JFrame {
 		setSize(600, 250);
 		setTitle("Classifier Generator");
 		setLocationRelativeTo(null);
-		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		if(closeOnExit)setDefaultCloseOperation(EXIT_ON_CLOSE);
 
 		btnMerge = new JButton("Merge datasets");
 		btnGenerate = new JButton("Generate C++ Classifier");
