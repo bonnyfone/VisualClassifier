@@ -20,10 +20,13 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 
 import org.visualclassifier.DataHandler;
 
@@ -40,6 +43,12 @@ public class ClassifierGenerator extends JFrame {
 	private JTextArea txtLog;
 	private JTextArea txtGenerateFile;
 	private String fileName;
+	private JTextField fakeWidth;
+	private JTextField fakeHeight;
+	private JCheckBox fakeCamera;
+
+	private int targetWidth;
+	private int targetHeight;
 
 	private static final String TAG_ATTR_INIT = "Attributes";
 	private static final String TAG_ATTR_END = "Test mode";
@@ -47,7 +56,7 @@ public class ClassifierGenerator extends JFrame {
 	public static final String TAG_TREE_END  = "Number of Leaves";
 
 	private boolean closeOnExit=true;
-	
+
 	public ClassifierGenerator(boolean closeOnExit){
 		this.closeOnExit = closeOnExit;
 		init();
@@ -56,11 +65,21 @@ public class ClassifierGenerator extends JFrame {
 
 
 	private void bindListeners() {
+		fakeCamera.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				fakeHeight.setEnabled(fakeCamera.isSelected());
+				fakeWidth.setEnabled(fakeCamera.isSelected());
+
+			}
+		});
+
 		btnMerge.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				try {
-					chooseDir();
+					doMerge();
 				} catch (FileNotFoundException e) {
 					e.printStackTrace();
 				} catch (IOException e) {
@@ -129,7 +148,7 @@ public class ClassifierGenerator extends JFrame {
 				//addLog(line);
 				sb.append(line+"\n");
 			}
-			
+
 			if(line.startsWith(TAG_TREE_INIT))	tree=true;
 
 		}
@@ -142,13 +161,13 @@ public class ClassifierGenerator extends JFrame {
 	}
 
 	private String header(){
-		
+
 		return "inline bool classify_" + fileName.replace(".arff", "") +" (Cluster* cluster){\n" ;
 	}
 
 	private void generateSourceCode(String tree){
 		ArrayList<String> vars = new ArrayList<String>();
-		
+
 		tree=tree.replace(":", " :");
 		StringBuilder sb = new StringBuilder();
 		sb.append(header());
@@ -168,7 +187,7 @@ public class ClassifierGenerator extends JFrame {
 			Scanner line = new Scanner(rawLine);
 
 			if(returnLine || prevLevel<level || firstLine){
-				
+
 				if(( previusReturned && (prevLevel==level) ) ||  (returnLine && (prevLevel>level)) ){
 					statement = "else return ";
 					if(rawLine.contains("negative"))statement += "false;\n";
@@ -186,9 +205,9 @@ public class ClassifierGenerator extends JFrame {
 				int counter = 0;
 				while(line.hasNext()){
 					String token = line.next();
-					
+
 					if(isVar(token) && !vars.contains(token))vars.add(token);
-					
+
 					if(counter < level+3){ 
 						if(!token.equals("|")){
 							statement += (" " +token);
@@ -212,7 +231,7 @@ public class ClassifierGenerator extends JFrame {
 				sb.append(tabbing(level)+statement);
 			}
 			else{
-				
+
 				/*
 				int diff = prevLevel - level;
 				if(diff>0){
@@ -223,7 +242,7 @@ public class ClassifierGenerator extends JFrame {
 						tmp--;
 					}
 				}
-				*/
+				 */
 				//sb.append(tabbing(level)+"else{\n");
 				sb.append(tabbing(level)+"else\n");
 			}
@@ -239,20 +258,20 @@ public class ClassifierGenerator extends JFrame {
 			sb.append("\n");
 			tmp--;
 		}
-		*/
+		 */
 
 		sb.append("\n}");
 		String out = sb.toString();
 		for(String v : vars){
 			out = out.replace(v, object+v);
 		}
-		
+
 		Viewer v = new Viewer(out, Color.blue);
 		v.setVisible(true);
 		v.setTitle("Classifier C++ snippet");
 		addLog("Generation complete :)");
 	}
-	
+
 
 	private String tabbing(int howMany){
 		String ris="";
@@ -268,22 +287,22 @@ public class ClassifierGenerator extends JFrame {
 		if(!isNumeric(str) && !str.contains("=") && !str.contains(">") && !str.contains("<"))return true;
 		return false;
 	}
-	
+
 	public static boolean isNumeric(String str)  
 	{  
-	  try  
-	  {  
-	    double d = Double.parseDouble(str);  
-	  }  
-	  catch(NumberFormatException nfe)  
-	  {  
-	    return false;  
-	  }  
-	  return true;  
+		try  
+		{  
+			double d = Double.parseDouble(str);  
+		}  
+		catch(NumberFormatException nfe)  
+		{  
+			return false;  
+		}  
+		return true;  
 	}
-	
+
 	private void init(){
-		setSize(600, 250);
+		setSize(700, 300);
 		setTitle("Classifier Generator");
 		setLocationRelativeTo(null);
 		if(closeOnExit)setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -299,7 +318,27 @@ public class ClassifierGenerator extends JFrame {
 
 		JPanel a = new JPanel();
 		a.setLayout(new GridLayout(2,1));
-		a.add(btnMerge);
+
+		JPanel b = new JPanel();
+		b.setLayout(new GridLayout(1, 2));
+		b.add(btnMerge);
+
+		JPanel c=new JPanel();
+		c.setLayout(new GridLayout(3,1));
+
+		fakeCamera = new JCheckBox("Scale to fake camera (ROAD CLUSTERS ONLY)");
+		fakeWidth = new JTextField("width");
+		fakeHeight = new JTextField("height");
+		fakeWidth.setEnabled(false);
+		fakeHeight.setEnabled(false);
+
+		c.add(fakeCamera);
+		c.add(fakeWidth);
+		c.add(fakeHeight);
+
+		b.add(c);
+		a.add(b);
+
 		a.add(btnGenerate);
 
 		add(a);
@@ -320,7 +359,21 @@ public class ClassifierGenerator extends JFrame {
 	}
 
 
-	private void chooseDir() throws IOException{
+	private void doMerge() throws IOException{
+		if(fakeCamera.isSelected()){
+			try{
+				targetWidth = Integer.parseInt(fakeWidth.getText());
+				targetHeight = Integer.parseInt(fakeHeight.getText());
+			}
+			catch(Exception e){
+				JOptionPane.showMessageDialog(this, "Error, width or height not valid!","ERROR",JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+		}
+
+
+
+
 		//Create a file chooser
 		final JFileChooser fc = new JFileChooser();
 		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -345,6 +398,16 @@ public class ClassifierGenerator extends JFrame {
 			}
 			addLog("File selezionati ("+datasets.size()+")");
 
+
+			//Aggiornati da ogni dataset
+			int currentWidth;
+			int currentHeight;
+			double currentArea;
+
+			double scaleArea=1.0;
+			double scaleWidth=1.0;
+			double scaleHeight=1.0;
+			
 			//SAVE file
 			if(datasets.size()>0){
 
@@ -360,7 +423,7 @@ public class ClassifierGenerator extends JFrame {
 					FileOutputStream fostream  = new FileOutputStream(fs.getSelectedFile());
 					DataOutputStream  dout = new DataOutputStream(fostream);
 					BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dout));
-
+					double targetArea = targetWidth*targetHeight;
 					boolean first = true;
 					for(String file : datasets){
 						FileInputStream fstream = new FileInputStream(new File(file));
@@ -368,13 +431,52 @@ public class ClassifierGenerator extends JFrame {
 						BufferedReader br = new BufferedReader(new InputStreamReader(in));
 						String value;
 						boolean tic = false;
+						
+						currentWidth = 720;//default val
+						currentHeight = 480;//default val
+						currentArea = currentHeight*currentWidth;
+						
 						while ((value = br.readLine()) != null)   {
+
+							//Estrai current w ed h
+							if(fakeCamera.isSelected()){
+								if(value.startsWith(DataHandler.TAG_W)){
+									currentWidth = Integer.parseInt(value.replace(DataHandler.TAG_W, ""));
+								}
+								else if(value.startsWith(DataHandler.TAG_H)){
+									currentHeight = Integer.parseInt(value.replace(DataHandler.TAG_H, ""));
+									
+									//Calcola scale
+									currentArea = currentHeight*currentWidth;
+									scaleArea = targetArea/currentArea;
+									scaleWidth = ((double)targetWidth)/(double)currentWidth;
+									scaleHeight = ((double)targetHeight)/(double)currentHeight;
+									
+								}
+							}
+
 							if(first){
+								//Scala per camera Fake
+								if(tic && fakeCamera.isSelected())
+									value = scaleToFake(value,scaleArea,scaleWidth,scaleHeight);
+
+								//Update di w e h per il primo file da cui copiamo l'header
+								if(fakeCamera.isSelected()){
+									if(!tic && value.startsWith(DataHandler.TAG_W))
+										value = "% w="+targetWidth;
+									else if(!tic && value.startsWith(DataHandler.TAG_H))
+										value = "% h="+targetHeight;
+								}
+
 								bw.write(value+"\n");
 								bw.flush();
+								if(value.startsWith(DataHandler.TAG_DATA))tic=true;
 							}
 							else{
 								if(tic){
+									if(fakeCamera.isSelected())
+										value = scaleToFake(value,scaleArea,scaleWidth,scaleHeight);
+
 									bw.write(value+"\n");
 									bw.flush();
 								}
@@ -397,6 +499,65 @@ public class ClassifierGenerator extends JFrame {
 
 	}
 
+
+	private String scaleToFake(String raw, double areaFactor, double widthFactor, double heightFactor){
+		/*
+		@attribute 0'area' real
+		@attribute 1'max_x' real
+		@attribute 2'max_y' real
+		@attribute 3'min_x' real
+		@attribute 4'min_y' real
+		@attribute 5'meanC1' real
+		@attribute 6'meanC2' real
+		@attribute 7'meanC3' real
+		@attribute 8'stddevC1' real
+		@attribute 9'stddevC2' real
+		@attribute 10'stddevC3' real
+		@attribute 11'cx' real
+		@attribute 12'cy' real
+		@attribute 'class' { road_negative, road_positive}
+		 */
+		String[] temp;
+		String delimiter = ",";
+		temp = raw.split(delimiter);
+		String v;
+		String ris = "";
+		for(int i=0;i<temp.length;i++){
+			v=temp[i];
+			
+			if(i==0){//AREA
+				//TODO FARE valore*scala!!
+				v = ""+(int)(Double.parseDouble(v)*areaFactor);
+			}
+			else if(i==1){//MAX_X
+				v = ""+(int)(Double.parseDouble(v)*widthFactor);
+			}
+			else if(i==2){//MAX_Y
+				v = ""+(int)(Double.parseDouble(v)*heightFactor);
+			}
+			else if(i==3){//MIN_X
+				v = ""+(int)(Double.parseDouble(v)*widthFactor);
+			}
+			else if(i==4){//MIN_Y
+				v = ""+(int)(Double.parseDouble(v)*heightFactor);
+			}
+			else if(i==11){//cx
+				v = ""+(int)(Double.parseDouble(v)*widthFactor);
+			}
+			else if(i==12){//cy
+				v = ""+(int)(Double.parseDouble(v)*heightFactor);
+			}
+			
+			
+			if(i< temp.length-1 )
+				ris+= (v +","); 
+			else
+				ris+= v;
+			
+		}
+
+		return ris;
+	}
 
 
 

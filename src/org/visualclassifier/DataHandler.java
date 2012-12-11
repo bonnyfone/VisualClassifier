@@ -20,6 +20,8 @@ public class DataHandler {
 	public static String TAG_CLASS = "@attribute 'class' {";
 	public static String TAG_DATA = "@data";
 	public static String TAG_VAL = "#_";
+	public static String TAG_W = "% w=";
+	public static String TAG_H = "% h=";
 
 	private String img_frame;
 	private String img_cluster;
