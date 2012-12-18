@@ -10,12 +10,13 @@ public class Main {
 		
 		
 		//DEBUG
-		
+		/*
 		args = new String[3];
-		args[0] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/frame.bmp";
-		args[1] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/frameclus.bmp";
-		args[2] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/set.arff";
-		
+		String origin = "/media/Mistero/C++/Tesi/datasets/TRAINING SET/SSDB005451/";
+		args[0] = origin+"frame.bmp";
+		args[1] =  origin+"frameclus.bmp";
+		args[2] =  origin+"set.arff";
+		*/
 		
 		if(args.length==0){
 			ClassifierGenerator cg = new ClassifierGenerator(true);

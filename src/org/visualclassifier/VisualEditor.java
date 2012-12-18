@@ -144,10 +144,12 @@ public class VisualEditor extends JFrame {
 
 					img1.setSelectedClusterPoints(points);
 					if(me.getButton()==MouseEvent.BUTTON1){
+						addLog("Added "+clusterAdded.size() + " clusters");
 						for(String s:clusterAdded)
 							dh.addRoadCluster(s);
 					}
 					else{
+						addLog("Removed "+clusterAdded.size() + " clusters");
 						for(String s:clusterAdded)
 							dh.removeRoadCluster(s);
 					}
@@ -162,7 +164,6 @@ public class VisualEditor extends JFrame {
 
 			@Override
 			public void mousePressed(MouseEvent me) {
-				addLog("PRESSED: "+me.getX()+","+me.getY());
 				clusterAdded = new ArrayList<String>();
 				img1.resetDragEvent();
 
@@ -351,13 +352,14 @@ public class VisualEditor extends JFrame {
 		 */
 
 		export = new JButton("Export dataset");
-		c2.add(export);
-
 		openGenerator = new JButton("Merge dataset / Generate classifier");
-		c2.add(openGenerator);
 		progress=new JProgressBar();
 		progress.setEnabled(false);
+		
+		c2.setLayout(new GridLayout(3,1));
+		c2.add(export);
 		c2.add(progress);
+		c2.add(openGenerator);
 
 		controls.add(c1);
 		controls.add(c2);
@@ -372,6 +374,7 @@ public class VisualEditor extends JFrame {
 
 	private void showLoading(){
 		progress.setEnabled(true);
+		progress.setStringPainted(true);
 		progress.setIndeterminate(true);
 		progress.setString("Exporting dataset...");
 

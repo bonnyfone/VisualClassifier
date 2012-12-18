@@ -144,31 +144,65 @@ public class ClassifierGenerator extends JFrame {
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	private void elaborate(File selectedFile) throws IOException, InterruptedException {
-		String cmd = "java -cp /home/ziby/Desktop/weka-3-6-8/weka.jar weka.classifiers.trees.J48 -C 0.25 -M 2 -t "+selectedFile.getAbsolutePath() +"";
+	private void elaborate(final File selectedFile) throws IOException, InterruptedException {
+		String cmd = "java -Xmx2g -cp /home/ziby/Desktop/weka-3-6-8/weka.jar weka.classifiers.trees.J48 -C 0.25 -M 2 -t "+selectedFile.getAbsolutePath() +"";
 		Runtime run = Runtime.getRuntime();
-		Process pr = run.exec(cmd);
-		pr.waitFor();
-		BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-		String line = "";
-		StringBuilder sb = new StringBuilder();
-		boolean tree = false;
-		while ((line=buf.readLine())!=null) {
-			if(line.contains(TAG_TREE_END)) tree=false;
-			if(tree){
-				//addLog(line);
-				sb.append(line+"\n");
+		final Process pr = run.exec(cmd);
+		
+		
+		Thread t=new Thread(){
+			public void run(){
+				
+				BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+				String line = "";
+				StringBuilder sb = new StringBuilder();
+				boolean tree = false;
+				try {
+					while ((line=buf.readLine())!=null) {
+						if(line.contains(TAG_TREE_END)) tree=false;
+						if(tree){
+							//addLog(line);
+							sb.append(line+"\n");
+						}
+						
+						if(line.startsWith(TAG_TREE_INIT))	tree=true;
+						
+					}
+					addLog("Generating source code...");
+					Viewer v = new Viewer(sb.toString().trim(), Color.black);
+					v.setTitle("J48 Tree (" + selectedFile.getAbsolutePath()+")");
+					v.setVisible(true);
+					
+					generateSourceCode(sb.toString().trim());
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
-
-			if(line.startsWith(TAG_TREE_INIT))	tree=true;
-
-		}
-		Viewer v = new Viewer(sb.toString().trim(), Color.black);
-		v.setTitle("J48 Tree (" + selectedFile.getAbsolutePath()+")");
-		v.setVisible(true);
-
-		addLog("Generating source code...");
-		generateSourceCode(sb.toString().trim());
+		};
+		t.start();
+		
+		
+		Thread e = new Thread(){
+			public void run(){
+				//Print error stream
+				BufferedReader bufer = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+				String line = "";
+				try {
+					while ((line=bufer.readLine())!=null) {
+						System.out.println(line);
+					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+		};
+		e.start();
+		
+		
+		pr.waitFor();
 	}
 
 	private String header(){
