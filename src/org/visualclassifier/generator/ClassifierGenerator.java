@@ -1,5 +1,6 @@
 package org.visualclassifier.generator;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -25,6 +26,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
@@ -46,6 +48,7 @@ public class ClassifierGenerator extends JFrame {
 	private JTextField fakeWidth;
 	private JTextField fakeHeight;
 	private JCheckBox fakeCamera;
+	private JProgressBar progress;
 
 	private int targetWidth;
 	private int targetHeight;
@@ -78,13 +81,20 @@ public class ClassifierGenerator extends JFrame {
 		btnMerge.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				try {
-					doMerge();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				showProgress();
+				Thread t = new Thread(){
+					public void run(){
+						try {
+							doMerge();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						hideProgress();
+
+					}
+				};
+				t.start();
 			}
 		});
 
@@ -104,12 +114,12 @@ public class ClassifierGenerator extends JFrame {
 		fs.setCurrentDirectory(new File("/media/Mistero/C++/Tesi/datasets"));
 		fs.setSelectedFile(new File("/media/Mistero/C++/Tesi/datasets/db.arff"));
 		fs.setDialogTitle("Select dataset file to elaborate");
-		int returnVal = fs.showSaveDialog(this);
+		int returnVal = fs.showOpenDialog(this);
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			btnGenerate.setEnabled(false);
 			addLog("Elaborating "+fs.getSelectedFile().getAbsolutePath());
 			addLog("Weka is Working...");
-
+			showProgress();
 			Thread t = new Thread(){
 				public void run(){
 					try {
@@ -121,6 +131,7 @@ public class ClassifierGenerator extends JFrame {
 						e.printStackTrace();
 					}
 					btnGenerate.setEnabled(true);
+					hideProgress();
 				}
 			};
 			t.start();
@@ -301,6 +312,16 @@ public class ClassifierGenerator extends JFrame {
 		return true;  
 	}
 
+	private void showProgress(){
+		progress.setEnabled(true);
+		progress.setIndeterminate(true);
+	}
+
+	private void hideProgress(){
+		progress.setEnabled(false);
+		progress.setIndeterminate(false);		
+	}
+
 	private void init(){
 		setSize(700, 300);
 		setTitle("Classifier Generator");
@@ -311,6 +332,9 @@ public class ClassifierGenerator extends JFrame {
 		btnGenerate = new JButton("Generate C++ Classifier");
 		btnSfoglia = new JButton("File");
 		btnSfoglia.setMinimumSize(new Dimension(300,40));
+
+		progress = new JProgressBar();
+		progress.setEnabled(false);
 
 		txtLog = new JTextArea("Files to merge...");
 		txtGenerateFile = new JTextArea("Source dataset ");
@@ -342,7 +366,11 @@ public class ClassifierGenerator extends JFrame {
 		a.add(btnGenerate);
 
 		add(a);
-		add(txtLog);
+		JPanel bottom = new JPanel();
+		bottom.setLayout(new BorderLayout());
+		bottom.add(txtLog,BorderLayout.CENTER);
+		bottom.add(progress,BorderLayout.SOUTH);
+		add(bottom);
 
 	}
 
@@ -407,7 +435,7 @@ public class ClassifierGenerator extends JFrame {
 			double scaleArea=1.0;
 			double scaleWidth=1.0;
 			double scaleHeight=1.0;
-			
+
 			//SAVE file
 			if(datasets.size()>0){
 
@@ -431,11 +459,11 @@ public class ClassifierGenerator extends JFrame {
 						BufferedReader br = new BufferedReader(new InputStreamReader(in));
 						String value;
 						boolean tic = false;
-						
+
 						currentWidth = 720;//default val
 						currentHeight = 480;//default val
 						currentArea = currentHeight*currentWidth;
-						
+
 						while ((value = br.readLine()) != null)   {
 
 							//Estrai current w ed h
@@ -445,13 +473,13 @@ public class ClassifierGenerator extends JFrame {
 								}
 								else if(value.startsWith(DataHandler.TAG_H)){
 									currentHeight = Integer.parseInt(value.replace(DataHandler.TAG_H, ""));
-									
+
 									//Calcola scale
 									currentArea = currentHeight*currentWidth;
 									scaleArea = targetArea/currentArea;
 									scaleWidth = ((double)targetWidth)/(double)currentWidth;
 									scaleHeight = ((double)targetHeight)/(double)currentHeight;
-									
+
 								}
 							}
 
@@ -496,6 +524,7 @@ public class ClassifierGenerator extends JFrame {
 		} else {
 			//Nothing
 		}
+		hideProgress();
 
 	}
 
@@ -524,7 +553,7 @@ public class ClassifierGenerator extends JFrame {
 		String ris = "";
 		for(int i=0;i<temp.length;i++){
 			v=temp[i];
-			
+
 			if(i==0){//AREA
 				//TODO FARE valore*scala!!
 				v = ""+(int)(Double.parseDouble(v)*areaFactor);
@@ -547,13 +576,13 @@ public class ClassifierGenerator extends JFrame {
 			else if(i==12){//cy
 				v = ""+(int)(Double.parseDouble(v)*heightFactor);
 			}
-			
-			
+
+
 			if(i< temp.length-1 )
 				ris+= (v +","); 
 			else
 				ris+= v;
-			
+
 		}
 
 		return ris;

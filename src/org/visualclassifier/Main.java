@@ -1,5 +1,7 @@
 package org.visualclassifier;
 
+import java.io.File;
+
 import org.visualclassifier.generator.ClassifierGenerator;
 
 public class Main {
@@ -8,16 +10,41 @@ public class Main {
 		
 		
 		//DEBUG
-		/*
+		
 		args = new String[3];
-		args[0] = "/media/Mistero/C++/Tesi/datasets/TEST 1/frame.bmp";
-		args[1] = "/media/Mistero/C++/Tesi/datasets/TEST 1/frameclus.bmp";
-		args[2] = "/media/Mistero/C++/Tesi/datasets/TEST 1/road1.arff";
-		*/
+		args[0] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/frame.bmp";
+		args[1] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/frameclus.bmp";
+		args[2] = "/media/Mistero/C++/Tesi/datasets/NEW TEST/SSDB005451/set.arff";
+		
 		
 		if(args.length==0){
 			ClassifierGenerator cg = new ClassifierGenerator(true);
 			cg.setVisible(true);
+		}
+		else if(args.length==1){ //DIR SPECIFIED
+			File f = new File(args[0]);
+			if(f.isDirectory()){
+				String[] list = f.list();
+				boolean found=false;
+				String arff="";
+				for(int i=0;i<list.length &&!found;i++){
+					if(list[i].endsWith(".arff") && !list[i].contains("classified")){
+						arff=f.getAbsolutePath()+"/"+list[i];
+						found=true;
+					}
+				}
+				String frame = f.getAbsolutePath()+"/frame.bmp";
+				String frameClus =  f.getAbsolutePath()+"/frameclus.bmp";
+				System.out.println("Data found:");
+				System.out.println(frame);
+				System.out.println(frameClus);
+				System.out.println(arff);
+				DataHandler myData = new DataHandler(frame,frameClus,arff );
+				VisualEditor v = new VisualEditor(myData);
+				v.setVisible(true);
+			}else{
+				System.out.println("Not a valid dataset directory!");
+			}
 		}
 		else if(args.length<3){
 			System.out.println("Specify: frame_image, cluster_image, raw_dataset");

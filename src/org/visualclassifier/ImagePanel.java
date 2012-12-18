@@ -17,12 +17,21 @@ public class ImagePanel extends JPanel{
 	private int imgWidth;
 	private int imgHeight;
 	private Color currentColor = Color.red;
-	private Color roadColor = Color.cyan;
+	private Color roadColor = Color.blue;
 
 	private ArrayList<String> selectedClusterPoints;
+	private ArrayList<String> areaClusterPoints;
 	private DataHandler dh;
 	private boolean showRoadPoints;
 
+	private int startX;
+	private int startY;
+	private int endX;
+	private int endY;
+	
+	private boolean shift;
+	private boolean dragging;
+	
 	public ImagePanel(String path, DataHandler dh) {
 		try {                
 			this.dh = dh;
@@ -33,6 +42,10 @@ public class ImagePanel extends JPanel{
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}
+	}
+	
+	public void resetDragEvent(){
+		areaClusterPoints = new ArrayList<String>();
 	}
 
 	@Override
@@ -54,16 +67,45 @@ public class ImagePanel extends JPanel{
 			}
 		}
 
-		g.setColor(currentColor);
-		if(selectedClusterPoints!=null){
-			for(String s : selectedClusterPoints){
-				val = Integer.parseInt(s);
-				x = val % imgWidth;
-				y = val / imgWidth;
-				g.drawLine(x, y, x, y);
+		if(!dragging){
+			g.setColor(currentColor);
+			if(selectedClusterPoints!=null){
+				for(String s : selectedClusterPoints){
+					val = Integer.parseInt(s);
+					x = val % imgWidth;
+					y = val / imgWidth;
+					g.drawLine(x, y, x, y);
+				}
 			}
 		}
+		else{ //DRAG MODE
+			g.setColor(Color.red);
+			int ox,oy,ex,ey;
+			if(getStartX()<getEndX()){
+				ox=getStartX();
+				ex=getEndX();
+			}else{
+				ex=getStartX();
+				ox=getEndX();
+			}
+
+			if(getStartY()<getEndY()){
+				oy=getStartY();
+				ey=getEndY();				
+			}else{
+				ey=getStartY();
+				oy=getEndY();			
+			}
+			g.drawRect(ox,oy, ex-ox,ey-oy);
+		}
+		
 	}
+	
+	public String calculateCluster(int x, int y){
+		int currentEntry = x + y*this.getImgWidth();
+		return dh.getPixel2cluster().get(""+currentEntry);
+	}
+
 
 	public void setRoadColor(boolean isRoad){
 		if(isRoad){
@@ -104,6 +146,62 @@ public class ImagePanel extends JPanel{
 
 	public void setShowRoadPoints(boolean showRoadPoints) {
 		this.showRoadPoints = showRoadPoints;
+	}
+
+	public int getStartX() {
+		return startX;
+	}
+
+	public void setStartX(int startX) {
+		if(startX<0)startX=0;
+		else if(startX>image.getWidth())startX=image.getWidth();
+		this.startX = startX;
+	}
+
+	public int getStartY() {
+		return startY;
+	}
+
+	public void setStartY(int startY) {
+		if(startY<0)startY=0;
+		else if(startY>image.getHeight())startY=image.getHeight();
+		this.startY = startY;
+	}
+
+	public int getEndX() {
+		return endX;
+	}
+
+	public void setEndX(int endX) {
+		if(endX<0)endX=0;
+		else if(endX>image.getWidth())endX=image.getWidth();
+		this.endX = endX;
+	}
+
+	public int getEndY() {
+		return endY;
+	}
+
+	public void setEndY(int endY) {
+		if(endY<0)endY=0;
+		else if(endY>image.getHeight())endY=image.getHeight();
+		this.endY = endY;
+	}
+
+	public boolean isShift() {
+		return shift;
+	}
+
+	public void setShift(boolean shift) {
+		this.shift = shift;
+	}
+
+	public boolean isDragging() {
+		return dragging;
+	}
+
+	public void setDragging(boolean dragging) {
+		this.dragging = dragging;
 	}
 
 }
