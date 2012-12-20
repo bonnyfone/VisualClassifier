@@ -3,6 +3,7 @@ package org.visualclassifier.generator;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -12,7 +13,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,6 +24,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
@@ -31,6 +32,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import org.visualclassifier.DataHandler;
+import org.visualclassifier.utils.Utils;
 
 
 public class ClassifierGenerator extends JFrame {
@@ -42,6 +44,7 @@ public class ClassifierGenerator extends JFrame {
 	private JButton btnMerge;
 	private JButton btnGenerate;
 	private JButton btnSfoglia;
+	private JButton btnBalance;
 	private JTextArea txtLog;
 	private JTextArea txtGenerateFile;
 	private String fileName;
@@ -49,6 +52,10 @@ public class ClassifierGenerator extends JFrame {
 	private JTextField fakeHeight;
 	private JCheckBox fakeCamera;
 	private JProgressBar progress;
+	private JCheckBox checkDiscard;
+	private JTextField txtDiscard;
+	private JTextField txtNegative;
+	private JTextField txtPositive;
 
 	private int targetWidth;
 	private int targetHeight;
@@ -68,6 +75,40 @@ public class ClassifierGenerator extends JFrame {
 
 
 	private void bindListeners() {
+
+		txtNegative.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try{
+					double negative = Double.parseDouble(txtNegative.getText());
+					double pos = 1.0-negative;
+					txtPositive.setText(pos+"");
+				}
+				catch(Exception ex){ex.printStackTrace();}
+			}
+		});
+
+		txtPositive.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try{
+					double positive = Double.parseDouble(txtPositive.getText());
+					double neg = 1.0-positive;
+					txtNegative.setText(neg+"");
+				}
+				catch(Exception ex){ex.printStackTrace();}
+			}
+		});
+
+		checkDiscard.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				txtDiscard.setEnabled(checkDiscard.isSelected());
+			}
+		});
+
 		fakeCamera.addActionListener(new ActionListener() {
 
 			@Override
@@ -81,7 +122,7 @@ public class ClassifierGenerator extends JFrame {
 		btnMerge.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				showProgress();
+
 				Thread t = new Thread(){
 					public void run(){
 						try {
@@ -118,8 +159,7 @@ public class ClassifierGenerator extends JFrame {
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			btnGenerate.setEnabled(false);
 			addLog("Elaborating "+fs.getSelectedFile().getAbsolutePath());
-			addLog("Weka is Working...");
-			showProgress();
+
 			Thread t = new Thread(){
 				public void run(){
 					try {
@@ -145,14 +185,22 @@ public class ClassifierGenerator extends JFrame {
 	 * @throws InterruptedException 
 	 */
 	private void elaborate(final File selectedFile) throws IOException, InterruptedException {
-		String cmd = "java -Xmx2g -cp /home/ziby/Desktop/weka-3-6-8/weka.jar weka.classifiers.trees.J48 -C 0.25 -M 2 -t "+selectedFile.getAbsolutePath() +"";
+
+		String s = (String)JOptionPane.showInputDialog( this, "Confidence", "Confidence factor", JOptionPane.PLAIN_MESSAGE,null, null, "0.1");
+		addLog("Weka is Working...");
+		//If a string was returned, say so.
+		if (!( (s != null) && (s.length() > 0)))return;
+
+		new Thread(){public void run(){showProgress();}}.start();
+
+		String cmd = "java -Xmx2g -cp /home/ziby/Desktop/weka-3-6-8/weka.jar weka.classifiers.trees.J48 -C "+s+" -M 2 -no-cv -t "+selectedFile.getAbsolutePath() +"";
 		Runtime run = Runtime.getRuntime();
 		final Process pr = run.exec(cmd);
-		
-		
+
+
 		Thread t=new Thread(){
 			public void run(){
-				
+
 				BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
 				String line = "";
 				StringBuilder sb = new StringBuilder();
@@ -164,15 +212,15 @@ public class ClassifierGenerator extends JFrame {
 							//addLog(line);
 							sb.append(line+"\n");
 						}
-						
+
 						if(line.startsWith(TAG_TREE_INIT))	tree=true;
-						
+
 					}
 					addLog("Generating source code...");
 					Viewer v = new Viewer(sb.toString().trim(), Color.black);
 					v.setTitle("J48 Tree (" + selectedFile.getAbsolutePath()+")");
 					v.setVisible(true);
-					
+
 					generateSourceCode(sb.toString().trim());
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
@@ -181,8 +229,8 @@ public class ClassifierGenerator extends JFrame {
 			}
 		};
 		t.start();
-		
-		
+
+
 		Thread e = new Thread(){
 			public void run(){
 				//Print error stream
@@ -196,12 +244,12 @@ public class ClassifierGenerator extends JFrame {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				
+
 			}
 		};
 		e.start();
-		
-		
+
+
 		pr.waitFor();
 	}
 
@@ -325,7 +373,7 @@ public class ClassifierGenerator extends JFrame {
 	}
 
 	private void addLog(String s){
-		txtLog.insert(s+"\n", 0);
+		txtLog.insert(Utils.getCurrentTimeStamp() +"  : "+ s+"\n", 0);
 	}
 
 	public static boolean isVar(String str){
@@ -357,7 +405,7 @@ public class ClassifierGenerator extends JFrame {
 	}
 
 	private void init(){
-		setSize(700, 300);
+		setSize(700, 500);
 		setTitle("Classifier Generator");
 		setLocationRelativeTo(null);
 		if(closeOnExit)setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -370,12 +418,13 @@ public class ClassifierGenerator extends JFrame {
 		progress = new JProgressBar();
 		progress.setEnabled(false);
 
-		txtLog = new JTextArea("Files to merge...");
+		txtLog = new JTextArea("");
+		addLog("ClassifierGenerator started.");
 		txtGenerateFile = new JTextArea("Source dataset ");
 		setLayout(new GridLayout(2,1));
 
 		JPanel a = new JPanel();
-		a.setLayout(new GridLayout(2,1));
+		a.setLayout(new GridLayout(3,1));
 
 		JPanel b = new JPanel();
 		b.setLayout(new GridLayout(1, 2));
@@ -394,9 +443,39 @@ public class ClassifierGenerator extends JFrame {
 		c.add(fakeWidth);
 		c.add(fakeHeight);
 
+		JPanel panelBalance = new JPanel();
+		panelBalance.setLayout(new GridLayout(1,2));
+		btnBalance = new JButton("Balance dataset");
+		JPanel balanceParams = new JPanel();		
+		panelBalance.add(btnBalance);
+		panelBalance.add(balanceParams);
+		balanceParams.setLayout(new FlowLayout());
+
+		JLabel label_negative = new JLabel("% negative");
+		JLabel label_positive = new JLabel("% positive");
+		checkDiscard = new JCheckBox("Discard cluster with area < of ");
+		txtDiscard = new JTextField("10");
+		txtDiscard.setPreferredSize(new Dimension(50, 20));
+		txtDiscard.setHorizontalAlignment(JTextField.CENTER);
+		txtDiscard.setEnabled(false);
+		txtNegative = new JTextField("0.5");
+		txtNegative.setPreferredSize(new Dimension(50, 20));
+		txtNegative.setHorizontalAlignment(JTextField.CENTER);
+		txtPositive = new JTextField("0.5");
+		txtPositive.setPreferredSize(new Dimension(50, 20));
+		txtPositive.setHorizontalAlignment(JTextField.CENTER);
+
+		balanceParams.add(checkDiscard);
+		balanceParams.add(txtDiscard);
+		balanceParams.add(label_negative);
+		balanceParams.add(txtNegative);
+		balanceParams.add(label_positive);
+		balanceParams.add(txtPositive);
+
 		b.add(c);
 		a.add(b);
 
+		a.add(panelBalance);
 		a.add(btnGenerate);
 
 		add(a);
@@ -444,6 +523,7 @@ public class ClassifierGenerator extends JFrame {
 		fc.setDialogTitle("Select datasets folders to merge");
 		int returnVal = fc.showOpenDialog(this);
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
+
 			File[] selectedFiles = fc.getSelectedFiles();
 			ArrayList<String> datasets = new ArrayList<String>();
 			for(File f:selectedFiles){
@@ -480,6 +560,12 @@ public class ClassifierGenerator extends JFrame {
 				returnVal = fs.showSaveDialog(this);
 
 				if (returnVal == JFileChooser.APPROVE_OPTION) {
+					Thread t =new Thread(){
+						public void run(){
+							showProgress();
+						}
+					};
+					t.start();
 					addLog("Saving merged file to "+fs.getSelectedFile());
 					//MERGE FILES
 					FileOutputStream fostream  = new FileOutputStream(fs.getSelectedFile());
