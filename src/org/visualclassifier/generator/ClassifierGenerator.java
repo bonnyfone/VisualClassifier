@@ -13,12 +13,12 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.Scanner;
 
 import javax.swing.JButton;
@@ -57,6 +57,9 @@ public class ClassifierGenerator extends JFrame {
 	private JTextField txtDiscard;
 	private JTextField txtNegative;
 	private JTextField txtPositive;
+	private JTextField txtOverfit;
+	private JCheckBox checkFilterOnly;
+	private Random rand;
 
 	private int targetWidth;
 	private int targetHeight;
@@ -70,6 +73,7 @@ public class ClassifierGenerator extends JFrame {
 
 	public ClassifierGenerator(boolean closeOnExit){
 		this.closeOnExit = closeOnExit;
+		rand = new Random(System.currentTimeMillis());
 		init();
 		bindListeners();
 	}
@@ -177,40 +181,45 @@ public class ClassifierGenerator extends JFrame {
 		//Select file to read
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			btnGenerate.setEnabled(false);
+
 			addLog("Elaborating "+fs.getSelectedFile().getAbsolutePath());
 			fileName = fs.getSelectedFile().getName();
 			openFile = fs.getSelectedFile();
-			
+
 			//Select dest file
 			fs.setSelectedFile(new File(fs.getSelectedFile().getParent()+"/"+calculateBalancedFileName(fileName)));
 			fs.setDialogTitle("Select destination file name for balanced dataset");
-	        returnVal = fs.showSaveDialog(this);
-	        
-	        if(returnVal == JFileChooser.APPROVE_OPTION){
-	        	saveFile = fs.getSelectedFile();
-	        	//do stuff
-	        	showProgress();
-	        	final File open =openFile;
-	        	final File save =saveFile;
-	        	Thread t = new Thread(){
-	        		public void run(){
-	        			try {
+			returnVal = fs.showSaveDialog(this);
+
+			if(returnVal == JFileChooser.APPROVE_OPTION){
+				saveFile = fs.getSelectedFile();
+				//do stuff
+				showProgress();
+				final File open =openFile;
+				final File save =saveFile;
+				Thread t = new Thread(){
+					public void run(){
+						try {
 							balanceDataset(open, save);
 						} catch (IOException e) {
 							addLog("Error: "+e.getMessage());
 							e.printStackTrace();
 						}
-	        			hideProgress();
-	        		}
-	        	};
-	        	t.start();
-	        	
-	        }	        
+						hideProgress();
+					}
+				};
+				t.start();
+
+			}	        
 		}
 	}
 
 	protected void balanceDataset(File openFile, File saveFile) throws IOException {
-		//Passo 1: count active cluste
+		/* ####
+		 *   Step 1: count active cluster
+		 * ### */
+
+
 		FileInputStream fstream = new FileInputStream(openFile);
 		DataInputStream in = new DataInputStream(fstream);
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
@@ -223,18 +232,19 @@ public class ClassifierGenerator extends JFrame {
 		int discardPositive=0;
 		int discardNegative=0;
 		int areaLimit = Integer.parseInt(txtDiscard.getText());
-		
+
 		boolean discardValid = false;
 		while ((value = br.readLine()) != null)   {
-			if(value.startsWith("@") || value.startsWith("%") || value.startsWith("0"))continue;
-			if(discardEnabled){
-				discardValid = checkDiscardValidity(value,areaLimit);
+			if(value.startsWith("@") || value.startsWith("%") || value.startsWith("0")){
+				continue;
 			}
-			
+
+			if(discardEnabled) 	discardValid = checkDiscardValidity(value,areaLimit);
+
 			//Cluster counts
 			count++;
 			if(discardEnabled && discardValid)discardCount++;
-			
+
 			if(value.contains("positive")){
 				positive++;
 				if(discardEnabled && discardValid)discardPositive++;
@@ -249,18 +259,149 @@ public class ClassifierGenerator extends JFrame {
 		double percPos = Utils.roundDecimals((((double)positive/count)*100.0),decimalDigits);
 		double percNeg = Utils.roundDecimals(100.0-percPos,decimalDigits);
 		addLog("Active clusters: "+count + "  ->  pos="+positive+" ("+percPos+"%), neg="+negative+" ("+percNeg+"%)");
+		double discardPercPos = -999.0;
+		double discardPercNeg = -999.0;
 		if(discardEnabled){
-			double discardPercPos = Utils.roundDecimals((((double)discardPositive/count)*100),decimalDigits);
-			double discardPercNeg = Utils.roundDecimals(100.0-discardPercPos,decimalDigits);
+			discardPercPos = Utils.roundDecimals((((double)discardPositive/count)*100),decimalDigits);
+			discardPercNeg = Utils.roundDecimals(100.0-discardPercPos,decimalDigits);
 			addLog("Filtered clusters (area="+areaLimit+"): "+discardCount + "  ->  pos="+discardPositive+" ("+discardPercPos+"%), neg="+discardNegative+" ("+discardPercNeg+"%)");	
 		}
-		
+
+		/* ####
+		 *   Step 2: calibrate sampling
+		 * ### */
+
+		double targetPosPerc = Double.parseDouble(txtPositive.getText());
+		double targetNegPerc = Double.parseDouble(txtNegative.getText());
+		double dataPosPerc;
+		double dataNegPerc;
+		double dataPos;
+		double dataNeg;
+
+		double avoidOverfit = Double.parseDouble(txtOverfit.getText());
+
+		int minCount;
+		double minPerc;
+		boolean minIsPositive;
+
+		if(discardEnabled){
+			dataPosPerc = discardPercPos;
+			dataNegPerc = discardPercNeg;
+			dataPos = discardPositive;
+			dataNeg = discardNegative;
+			if(discardPositive<discardNegative){
+				minCount = discardPositive;
+				minIsPositive =true;
+			}
+			else{
+				minCount = discardNegative;
+				minIsPositive =false;				
+			}
+		}
+		else{
+			dataPosPerc = percPos;
+			dataNegPerc = percNeg;
+			dataPos = positive;
+			dataNeg = negative;
+			if(positive<negative){
+				minCount = positive;
+				minIsPositive =true;
+			}
+			else{
+				minCount = negative;
+				minIsPositive =false;				
+			}
+		}
+
+		//What I want
+		double samplingPosPerc = -999.0;
+		double samplingNegPerc = -999.0;
+		int totalExpected =-1;
+		if(minIsPositive){
+			// positive:perc_positive = expected_negative(X) : perc_negative
+			int expectedNegative = (int)(((double)minCount * targetNegPerc) / (targetPosPerc*(1.0-avoidOverfit)));
+			totalExpected = minCount + expectedNegative;
+
+			
+			
+			samplingNegPerc =(double)expectedNegative/(double)dataNeg;
+			samplingPosPerc =(double)minCount*(1.0-avoidOverfit)/(double)dataPos;
+		}else{
+			int expectedPositive = (int)(((double)minCount * targetPosPerc) / (targetNegPerc*(1.0-avoidOverfit)));
+			totalExpected = minCount + expectedPositive;
+
+			
+			samplingNegPerc =(double)minCount*(1.0-avoidOverfit)/(double)dataNeg;
+			samplingPosPerc =(double)expectedPositive/(double)dataPos;
+		}
+		if(samplingNegPerc>1.0 || samplingPosPerc >1.0){
+			JOptionPane.showMessageDialog( this, "Error", "Bound error", JOptionPane.PLAIN_MESSAGE);
+		}
+
+		addLog("Expected clusters: " + totalExpected  +", pos_sampling = "+Utils.roundDecimals(samplingPosPerc*100.0,3)+"%, neg_sampling = "+Utils.roundDecimals(samplingNegPerc*100.0,3)+"%");
+		//addLog("Expected clusters: " + totalExpected  +", pos_sampling = "+samplingPosPerc*100.0+"%, neg_sampling = "+samplingNegPerc*100.0+"%");
+
+		/* ####
+		 *   Step 3: sampling
+		 * ### */
+		fstream = new FileInputStream(openFile);
+		in = new DataInputStream(fstream);
+		br = new BufferedReader(new InputStreamReader(in));
+		FileOutputStream fostream  = new FileOutputStream(saveFile);
+		DataOutputStream  dout = new DataOutputStream(fostream);
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dout));
+		int effective=0;
+		int effectivePos=0;
+		int effectiveNeg=0;
+		boolean filterOnly = checkFilterOnly.isSelected();
+		while ((value = br.readLine()) != null)   {
+			value+="\n";
+			if(value.startsWith("0"))continue;
+			if(value.startsWith("@") || value.startsWith("%")){
+				bw.write(value);
+				continue;
+			}
+			if(discardEnabled) 	discardValid = checkDiscardValidity(value,areaLimit);
+
+			if(!discardEnabled || discardValid){ //if valid for discard or no discard required
+
+				if(value.contains("positive")){
+					if((filterOnly && checkDiscardValidity(value, areaLimit)) || rand.nextDouble()<=samplingPosPerc){
+						bw.write(value);
+						effectivePos++;
+						effective++;
+					}
+				}
+				else{
+					if((filterOnly && checkDiscardValidity(value, areaLimit)) || rand.nextDouble()<=samplingNegPerc){
+						bw.write(value);
+						effectiveNeg++;
+						effective++;
+					}
+				}
+
+				bw.flush();
+			}
+
+
+		}
+		double effectivePosPerc = Utils.roundDecimals((double)effectivePos/effective *100.0,3);
+		double effectiveNegPerc = Utils.roundDecimals((double)effectiveNeg/effective *100.0,3);
+		addLog("Effective clusters = "+effective + ", pos = "+effectivePos+" ("+effectivePosPerc+"%) , neg = "+effectiveNeg + " ("+effectiveNegPerc+"%)");
+		dout.close();
+		in.close();
+
+
+		addLogLine();
 	}
 
-	
+
+
+
+
 	private boolean checkDiscardValidity(String value, int param) {
 		int area = Integer.parseInt(value.substring(0,value.indexOf(",")));
-		return param<=area;
+		return param<area;
 	}
 
 
@@ -498,6 +639,11 @@ public class ClassifierGenerator extends JFrame {
 		return ris;
 	}
 
+	private void addLogLine() {
+		addLog("__________________________________________________________________________________________________________");
+
+	}
+
 	private void addLog(String s){
 		txtLog.insert(Utils.getCurrentTimeStamp() +"  : "+ s+"\n", 0);
 	}
@@ -531,7 +677,7 @@ public class ClassifierGenerator extends JFrame {
 	}
 
 	private void init(){
-		setSize(700, 500);
+		setSize(800, 500);
 		setTitle("Classifier Generator");
 		setLocationRelativeTo(null);
 		if(closeOnExit)setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -579,6 +725,7 @@ public class ClassifierGenerator extends JFrame {
 
 		JLabel label_negative = new JLabel("% negative");
 		JLabel label_positive = new JLabel("% positive");
+		JLabel label_overfit = new JLabel("% overfit avoidance");
 		checkDiscard = new JCheckBox("Discard cluster with area < of ");
 		txtDiscard = new JTextField("10");
 		txtDiscard.setPreferredSize(new Dimension(50, 20));
@@ -590,14 +737,20 @@ public class ClassifierGenerator extends JFrame {
 		txtPositive = new JTextField("0.5");
 		txtPositive.setPreferredSize(new Dimension(50, 20));
 		txtPositive.setHorizontalAlignment(JTextField.CENTER);
+		txtOverfit = new JTextField("0.05");
+		txtOverfit.setPreferredSize(new Dimension(50, 20));
+		txtOverfit.setHorizontalAlignment(JTextField.CENTER);
+		checkFilterOnly = new JCheckBox("Filter only");
 
 		balanceParams.add(checkDiscard);
 		balanceParams.add(txtDiscard);
-		balanceParams.add(label_negative);
-		balanceParams.add(txtNegative);
+		balanceParams.add(checkFilterOnly);
 		balanceParams.add(label_positive);
 		balanceParams.add(txtPositive);
-
+		balanceParams.add(label_negative);
+		balanceParams.add(txtNegative);
+		balanceParams.add(label_overfit);
+		balanceParams.add(txtOverfit);
 		b.add(c);
 		a.add(b);
 
