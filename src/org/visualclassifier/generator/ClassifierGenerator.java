@@ -13,6 +13,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -75,6 +76,19 @@ public class ClassifierGenerator extends JFrame {
 
 
 	private void bindListeners() {
+
+		btnBalance.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+
+				Thread t = new Thread(){
+					public void run(){
+						doBalance();
+					}
+				};
+				t.start();
+			}
+		});
 
 		txtNegative.addActionListener(new ActionListener() {
 
@@ -147,6 +161,118 @@ public class ClassifierGenerator extends JFrame {
 			}
 		});
 
+	}
+
+	private void doBalance() {
+		final JFileChooser fs = new JFileChooser();
+		fs.setCurrentDirectory(new File("/media/Mistero/C++/Tesi/datasets"));
+		fs.setSelectedFile(new File("/media/Mistero/C++/Tesi/datasets/db.arff"));
+		fs.setDialogTitle("Select dataset file to balance");
+		int returnVal = fs.showOpenDialog(this);
+
+
+		File openFile=null;
+		File saveFile=null;
+
+		//Select file to read
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			btnGenerate.setEnabled(false);
+			addLog("Elaborating "+fs.getSelectedFile().getAbsolutePath());
+			fileName = fs.getSelectedFile().getName();
+			openFile = fs.getSelectedFile();
+			
+			//Select dest file
+			fs.setSelectedFile(new File(fs.getSelectedFile().getParent()+"/"+calculateBalancedFileName(fileName)));
+			fs.setDialogTitle("Select destination file name for balanced dataset");
+	        returnVal = fs.showSaveDialog(this);
+	        
+	        if(returnVal == JFileChooser.APPROVE_OPTION){
+	        	saveFile = fs.getSelectedFile();
+	        	//do stuff
+	        	showProgress();
+	        	final File open =openFile;
+	        	final File save =saveFile;
+	        	Thread t = new Thread(){
+	        		public void run(){
+	        			try {
+							balanceDataset(open, save);
+						} catch (IOException e) {
+							addLog("Error: "+e.getMessage());
+							e.printStackTrace();
+						}
+	        			hideProgress();
+	        		}
+	        	};
+	        	t.start();
+	        	
+	        }	        
+		}
+	}
+
+	protected void balanceDataset(File openFile, File saveFile) throws IOException {
+		//Passo 1: count active cluste
+		FileInputStream fstream = new FileInputStream(openFile);
+		DataInputStream in = new DataInputStream(fstream);
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		String value;
+		int count=0;
+		int positive=0;
+		int negative=0;
+		boolean discardEnabled  = checkDiscard.isSelected();
+		int discardCount=0;
+		int discardPositive=0;
+		int discardNegative=0;
+		int areaLimit = Integer.parseInt(txtDiscard.getText());
+		
+		boolean discardValid = false;
+		while ((value = br.readLine()) != null)   {
+			if(value.startsWith("@") || value.startsWith("%") || value.startsWith("0"))continue;
+			if(discardEnabled){
+				discardValid = checkDiscardValidity(value,areaLimit);
+			}
+			
+			//Cluster counts
+			count++;
+			if(discardEnabled && discardValid)discardCount++;
+			
+			if(value.contains("positive")){
+				positive++;
+				if(discardEnabled && discardValid)discardPositive++;
+			}
+			else{
+				negative++;
+				if(discardEnabled && discardValid)discardNegative++;
+			}
+		}
+		in.close();
+		int decimalDigits = 3;
+		double percPos = Utils.roundDecimals((((double)positive/count)*100.0),decimalDigits);
+		double percNeg = Utils.roundDecimals(100.0-percPos,decimalDigits);
+		addLog("Active clusters: "+count + "  ->  pos="+positive+" ("+percPos+"%), neg="+negative+" ("+percNeg+"%)");
+		if(discardEnabled){
+			double discardPercPos = Utils.roundDecimals((((double)discardPositive/count)*100),decimalDigits);
+			double discardPercNeg = Utils.roundDecimals(100.0-discardPercPos,decimalDigits);
+			addLog("Filtered clusters (area="+areaLimit+"): "+discardCount + "  ->  pos="+discardPositive+" ("+discardPercPos+"%), neg="+discardNegative+" ("+discardPercNeg+"%)");	
+		}
+		
+	}
+
+	
+	private boolean checkDiscardValidity(String value, int param) {
+		int area = Integer.parseInt(value.substring(0,value.indexOf(",")));
+		return param<=area;
+	}
+
+
+	private String calculateBalancedFileName(String rawName){
+		String ris ="";
+		ris = fileName.replace(".arff", "")+"_BALANCED_pos"+ (int)(Double.parseDouble(txtPositive.getText())*100);
+		if(checkDiscard.isSelected()){
+			ris += "_disc" + txtDiscard.getText();
+		}
+		ris+=".arff";
+		System.out.println("Balanced fileName is: "+ris);
+		return ris;
 	}
 
 	protected void chooseFileAndGenerate() {
