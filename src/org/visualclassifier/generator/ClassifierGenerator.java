@@ -335,7 +335,7 @@ public class ClassifierGenerator extends JFrame {
 			samplingPosPerc =(double)expectedPositive/(double)dataPos;
 		}
 		if(samplingNegPerc>1.0 || samplingPosPerc >1.0){
-			JOptionPane.showMessageDialog( this, "Error", "Bound error", JOptionPane.PLAIN_MESSAGE);
+			JOptionPane.showMessageDialog( this, "Error", "Oversampling error", JOptionPane.PLAIN_MESSAGE);
 		}
 
 		addLog("Expected clusters: " + totalExpected  +", pos_sampling = "+Utils.roundDecimals(samplingPosPerc*100.0,3)+"%, neg_sampling = "+Utils.roundDecimals(samplingNegPerc*100.0,3)+"%");

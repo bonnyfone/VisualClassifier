@@ -58,6 +58,8 @@ public class VisualEditor extends JFrame {
 	//private JComboBox comboval;
 	private JButton export;
 	private JButton openGenerator;
+	private JButton next;
+	private JButton discard;
 
 	private ArrayList<String>clusterAdded;
 
@@ -68,6 +70,32 @@ public class VisualEditor extends JFrame {
 	}
 
 	private void bindListeners() {
+		
+		discard.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				File f = Main.sources.get(Main.current-1);
+				String newPath  = f.getParentFile().getAbsolutePath() + "/discard_"+f.getName();
+				System.out.println(f.getAbsolutePath());
+				System.out.println(newPath);
+				f.renameTo(new File(newPath));
+
+				//Go to next
+				dispose();
+				System.gc();
+				Main.nextVideo();
+			}
+		});
+		
+		next.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				dispose();
+				System.gc();
+				Main.nextVideo();
+			}
+		});
 
 		openGenerator.addActionListener(new ActionListener() {
 			@Override
@@ -353,13 +381,24 @@ public class VisualEditor extends JFrame {
 
 		export = new JButton("Export dataset");
 		openGenerator = new JButton("Merge dataset / Generate classifier");
+		next = new JButton("NEXT ("+ (Main.sources.size()-Main.current -1)+")");
+		discard = new JButton("Discard");
 		progress=new JProgressBar();
 		progress.setEnabled(false);
-		
+		JPanel c3 = new JPanel();
+		JPanel c4 = new JPanel();
+		c4.setLayout(new GridLayout(1,2));
+		c3.setLayout(new GridLayout(1,2));
 		c2.setLayout(new GridLayout(3,1));
-		c2.add(export);
-		c2.add(progress);
+		c3.add(export);
+		c3.add(progress);
+		
+		c2.add(c3);		
 		c2.add(openGenerator);
+		
+		c4.add(discard);
+		c4.add(next);
+		c2.add(c4);
 
 		controls.add(c1);
 		controls.add(c2);
